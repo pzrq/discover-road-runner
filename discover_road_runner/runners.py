@@ -111,13 +111,12 @@ class DiscoverRoadRunner(DiscoverRunner):
         while not result_queue.empty():
             results.append(result_queue.get())
 
-        unpacked = results
         merged = {
             'test_label': 'OVERALL',
-            'run': sum([r['run'] for r in unpacked]),
-            'fail_count': sum([r['fail_count'] for r in unpacked]),
-            'error_count': sum([r['error_count'] for r in unpacked]),
-            'skip_count': sum([r['skip_count'] for r in unpacked]),
+            'run': sum([r['run'] for r in results]),
+            'fail_count': sum([r['fail_count'] for r in results]),
+            'error_count': sum([r['error_count'] for r in results]),
+            'skip_count': sum([r['skip_count'] for r in results]),
         }
         merged['short_summary'] = build_short_summary(merged)
         end = time.time()
