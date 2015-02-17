@@ -43,7 +43,9 @@ INSTALLED_APPS = (
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'discover_road_runner.coyote',
     'discover_road_runner.meep_meep',
+    'discover_road_runner.wiley',
 )
 
 MIDDLEWARE_CLASSES = (
