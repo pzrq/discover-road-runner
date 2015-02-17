@@ -103,9 +103,7 @@ class DiscoverRoadRunner(DiscoverRunner):
         while not result_queue.empty():
             results.append(result_queue.get())
 
-        unpacked = [item
-                    for sub_list in results
-                    for item in sub_list]
+        unpacked = results
         merged = {
             'test_label': 'OVERALL',
             'run': sum([r['run'] for r in unpacked]),
@@ -239,4 +237,4 @@ def multi_proc_run_tests(pickled_self, source_queue, result_queue, extra_tests):
         # Copy the behaviour of the old run_tests method
         pickled_self.teardown_databases(old_config)
         pickled_self.teardown_test_environment()
-        result_queue.put([extra_msg_dict])
+        result_queue.put(extra_msg_dict)
