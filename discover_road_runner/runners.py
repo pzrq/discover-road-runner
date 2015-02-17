@@ -1,3 +1,4 @@
+import queue
 import sys
 from multiprocessing import Process, Queue
 import time
@@ -206,11 +207,12 @@ def multi_proc_run_tests(pickled_self, source_queue, result_queue, extra_tests):
     the test_label(s) placed into the source_queue.
     """
 
-    results = []
-
     # Get any test apps / labels in the source_queue until it is empty
-    while not source_queue.empty():
-        test_label = source_queue.get()
+    while True:
+        try:
+            test_label = source_queue.get(block=False)
+        except queue.Empty:
+            return
 
         # Set up and run the suite, capturing most of the stream output
         # Printing here can't be made atomic cleanly at verbosity >= 2,
@@ -237,8 +239,4 @@ def multi_proc_run_tests(pickled_self, source_queue, result_queue, extra_tests):
         # Copy the behaviour of the old run_tests method
         pickled_self.teardown_databases(old_config)
         pickled_self.teardown_test_environment()
-
-        results.append(extra_msg_dict)
-
-    result_queue.put(results)
-    return results
+        result_queue.put([extra_msg_dict])
