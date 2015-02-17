@@ -11,17 +11,6 @@ from django.test.runner import DiscoverRunner
 from termcolor import colored
 
 
-def get_apps_after_exclusions():
-    """
-    Lists all apps in the active Django project, but excluding any
-    listed in ``TEST_RUNNER_EXCLUDE_APPS``.
-    """
-    exclude_apps = getattr(settings, 'TEST_RUNNER_EXCLUDE_APPS', ())
-    excluded_names = ['%s.models' % app for app in exclude_apps]
-    is_not_excluded = lambda app: app.__name__ not in excluded_names
-    return filter(is_not_excluded, get_apps())
-
-
 class HijackTextTestResult(unittest.TextTestResult):
 
     @staticmethod
@@ -62,6 +51,17 @@ class DiscoverRoadRunner(DiscoverRunner):
         self.original_stream = self.stream
         super(DiscoverRoadRunner, self).__init__(*args, **kwargs)
 
+    @staticmethod
+    def get_apps_after_exclusions():
+        """
+        Lists all apps in the active Django project, but excluding any
+        listed in ``TEST_RUNNER_EXCLUDE_APPS``.
+        """
+        exclude_apps = getattr(settings, 'TEST_RUNNER_EXCLUDE_APPS', ())
+        excluded_names = ['%s.models' % app for app in exclude_apps]
+        is_not_excluded = lambda app: app.__name__ not in excluded_names
+        return filter(is_not_excluded, get_apps())
+
     def run_suite(self, suite, **kwargs):
         if kwargs.get('stream', None):
             self.stream = HijackUnitTestOutput(self.original_stream)
@@ -82,7 +82,7 @@ class DiscoverRoadRunner(DiscoverRunner):
             test_labels = [
                 # Don't double-discover tests?
                 app.__name__.replace('.models', '')
-                for app in get_apps_after_exclusions()
+                for app in self.get_apps_after_exclusions()
             ]
             # Hide most of the test output so we can focus on failures,
             # unless the user wanted to see the full output per app.
