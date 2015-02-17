@@ -1,3 +1,9 @@
+Discover Road Runner
+====================
+
+*Running tests should be a fun voyage of learning and discovery*
+
+
 Another test runner?
 --------------------
 
@@ -32,10 +38,13 @@ But please feel free to check out other awesome test runners:
 * etc
 
 
-Supports
---------
+Support
+-------
 
-Django 1.6.10+
+Tested under OSX, Linux (Ubuntu). YMMV with other platforms.
+
 Python 2.7+, 3.4+
+Django 1.6.10+
 
-Feel free to contribute back patches for other Python or Django versions.
+Please feel free to open issues or contribute back patches via GitHub
+`pull requests <https://help.github.com/articles/creating-a-pull-request/>`_.
