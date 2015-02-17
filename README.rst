@@ -59,3 +59,4 @@ Known issues
 
 * Doesn't work nicely with coverage
 * Doesn't work nicely with PyCharm's unit test runner
+* Doesn't support fuzzy matching like tox does
