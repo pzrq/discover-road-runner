@@ -123,10 +123,10 @@ class DiscoverRoadRunner(DiscoverRunner):
         end = time.time()
         merged['took'] = end - start
 
-        final_result = '\n'.join((
-            '-' * 80,
-            build_message(merged),
-            '-' * 80,
+        final_result = ''.join((
+            '_  \~ ', '-meep-meep', '-' * 64, '\n',
+            ' `=/  ', build_message(merged), '\n',
+            '~` `~ ', '-' * 74,
         ))
         msg = colored(final_result, color=get_colour(merged), attrs=['bold'])
         print(msg)
