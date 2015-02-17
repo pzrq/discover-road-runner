@@ -34,6 +34,12 @@ But please feel free to check out other awesome test runners:
 * etc
 
 
+Getting it
+----------
+
+pip install -e git+https://github.com/pzrq/discover-road-runner.git#egg=drr
+
+
 Support
 -------
 
@@ -46,3 +52,10 @@ Django 1.6.10+
 
 Please feel free to open issues or contribute back patches via GitHub
 `pull requests <https://help.github.com/articles/creating-a-pull-request/>`_.
+
+
+Known issues
+------------
+
+* Doesn't work nicely with coverage
+* Doesn't work nicely with PyCharm's unit test runner
