@@ -92,7 +92,7 @@ class DiscoverRoadRunner(DiscoverRunner):
             # so performance tests run more reliably
             p = Process(
                 target=multi_proc_run_tests,
-                args=[self, source_queue, result_queue, extra_tests]
+                args=(self, source_queue, result_queue, extra_tests),
             )
             p.start()
             processes.append(p)
