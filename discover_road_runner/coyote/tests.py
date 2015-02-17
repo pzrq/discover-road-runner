@@ -10,8 +10,8 @@ class FastOutputTest(SimpleTestCase):
     def test_slow(self):
         time.sleep(3)
 
-    def test_wiley_is_ord_blocked(self):
+    def test_wile_e_is_ord_blocked(self):
         """
         ord('r') < ord('s') < ord('w')
         """
-        self.fail('Wiley: I get blocked by teh ASCIIz...')
+        self.fail('Wile E: I get blocked by teh ASCIIz...')
