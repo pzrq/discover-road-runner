@@ -93,7 +93,7 @@ class DiscoverRoadRunner(DiscoverRunner):
         return HijackMoreOutputTestRunner(
             stream=self.stream,
             verbosity=self.verbosity,
-            failfast=self.failfast
+            failfast=self.failfast,
         ).run(suite)
 
     def run_tests(self, test_labels, extra_tests=None, **kwargs):
