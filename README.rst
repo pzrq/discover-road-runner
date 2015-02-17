@@ -7,6 +7,9 @@ Yes. Why?
 *   Maxim: App-based breakdown
 *   Maxim: Multiprocessing by default
 
+Features:
+
+*   Traffic-light red / yellow / green feedback
 
 Hence prioritised actionable information should be (reverse order to command line):
 

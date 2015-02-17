@@ -31,14 +31,14 @@ class HijackTextTestResult(unittest.TextTestResult):
             test.__class__.__name__,
             test._testMethodName,
         ))
-        write("\n%s: %s" % ('ERROR', self.getDescription(test)))
+        write("\n%s %s" % (colored('ERROR:', 'red'), self.getDescription(test)))
         error_str = self._exc_info_to_string(err, test)
         write("\n%s" % error_str)
 
     def addFailure(self, test, err):
         super(HijackTextTestResult, self).addFailure(test, err)
         write = self._original_stderr.write
-        write("\n%s: %s" % ('FAIL', self.getDescription(test)))
+        write("\n%s %s" % (colored('FAIL:', 'red'), self.getDescription(test)))
         error_str = self._exc_info_to_string(err, test)
         write("\n%s" % error_str)
 
