@@ -57,9 +57,9 @@ MIDDLEWARE_CLASSES = (
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 )
 
-ROOT_URLCONF = 'drr.urls'
+ROOT_URLCONF = 'NOTUSED.urls'
 
-WSGI_APPLICATION = 'drr.wsgi.application'
+WSGI_APPLICATION = 'NOTUSED.wsgi.application'
 
 
 # Database
