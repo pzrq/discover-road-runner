@@ -77,10 +77,7 @@ class DiscoverRoadRunner(DiscoverRunner):
                 pass
 
             def write(self, string):
-                if len(string) == 1 and string not in '\r\n':
-                    # Keep the progress skipped or dots that give feedback that
-                    # a test is taking a long time to run
-                    self.original_stream.write(string)
+                pass
 
             def writeln(self, string):
                 pass
