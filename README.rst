@@ -27,10 +27,6 @@ Hence prioritised actionable information should be (reverse order to command lin
     5: Alphabetical order app summary.
     6. Print full test failures.
 
-Take full control over DiscoverRunner output? Then I could print failures immediately rather than on app completion.
-Definitely needs tests.
-
-
 But please feel free to check out other awesome test runners:
 
 * tox
