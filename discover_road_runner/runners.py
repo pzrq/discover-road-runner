@@ -11,39 +11,6 @@ from django.test.runner import DiscoverRunner
 from termcolor import colored
 
 
-class HijackTextTestResult(unittest.TextTestResult):
-
-    @staticmethod
-    def repro(test):
-        """
-        String designed to be copied and pasted directly after `manage.py test`.
-        """
-        fast_repro = '.'.join((
-            test.__module__,
-            test.__class__.__name__,
-            test._testMethodName,
-        ))
-        return colored(fast_repro, 'cyan')
-
-    def addError(self, test, err):
-        super(HijackTextTestResult, self).addError(test, err)
-        write = self._original_stderr.write
-        error_str = self._exc_info_to_string(err, test)
-        write('\n%s %s' % ('ERROR:', self.repro(test)))
-        write('\n%s' % error_str)
-
-    def addFailure(self, test, err):
-        super(HijackTextTestResult, self).addFailure(test, err)
-        write = self._original_stderr.write
-        error_str = self._exc_info_to_string(err, test)
-        write('\n%s %s' % ('FAIL:', self.repro(test)))
-        write('\n%s' % error_str)
-
-
-class HijackMoreOutputTestRunner(unittest.TextTestRunner):
-    resultclass = HijackTextTestResult
-
-
 class DiscoverRoadRunner(DiscoverRunner):
 
     def __init__(self, *args, **kwargs):
@@ -63,6 +30,61 @@ class DiscoverRoadRunner(DiscoverRunner):
         return filter(is_not_excluded, get_apps())
 
     def run_suite(self, suite, **kwargs):
+
+        class HijackTextTestResult(unittest.TextTestResult):
+
+            @staticmethod
+            def repro(test):
+                """
+                String designed to be copied and pasted
+                directly after `manage.py test`.
+                """
+                fast_repro = '.'.join((
+                    test.__module__,
+                    test.__class__.__name__,
+                    test._testMethodName,
+                ))
+                return colored(fast_repro, 'cyan')
+
+            def addError(self, test, err):
+                super(HijackTextTestResult, self).addError(test, err)
+                write = self._original_stderr.write
+                error_str = self._exc_info_to_string(err, test)
+                write('\n%s %s' % ('ERROR:', self.repro(test)))
+                write('\n%s' % error_str)
+
+            def addFailure(self, test, err):
+                super(HijackTextTestResult, self).addFailure(test, err)
+                write = self._original_stderr.write
+                error_str = self._exc_info_to_string(err, test)
+                write('\n%s %s' % ('FAIL:', self.repro(test)))
+                write('\n%s' % error_str)
+
+        class HijackMoreOutputTestRunner(unittest.TextTestRunner):
+            resultclass = HijackTextTestResult
+
+        class HijackUnitTestOutput(object):
+            """
+            Modify unit test output so only the valuable actionable information
+            is printed to the stream, as soon as it is known,
+            to boost developer productivity.
+            """
+
+            def __init__(self, original_stream):
+                self.original_stream = original_stream
+
+            def flush(self):
+                pass
+
+            def write(self, string):
+                if len(string) == 1 and string not in '\r\n':
+                    # Keep the progress skipped or dots that give feedback that
+                    # a test is taking a long time to run
+                    self.original_stream.write(string)
+
+            def writeln(self, string):
+                pass
+
         if kwargs.get('stream', None):
             self.stream = HijackUnitTestOutput(self.original_stream)
 
@@ -129,29 +151,6 @@ class DiscoverRoadRunner(DiscoverRunner):
         ))
         msg = colored(final_result, color=get_colour(merged), attrs=['bold'])
         print(msg)
-
-
-class HijackUnitTestOutput(object):
-    """
-    Modify unit test output so only the valuable actionable information is
-    printed to the stream, as soon as it is known,
-    to boost developer productivity.
-    """
-
-    def __init__(self, original_stream):
-        self.original_stream = original_stream
-
-    def flush(self):
-        pass
-
-    def write(self, string):
-        if len(string) == 1 and string not in '\r\n':
-            # Keep the progress skipped or dots that give feedback that
-            # a test is taking a long time to run
-            self.original_stream.write(string)
-
-    def writeln(self, string):
-        pass
 
 
 def build_short_summary(extra_msg_dict):
