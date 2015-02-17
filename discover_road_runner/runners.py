@@ -1,5 +1,11 @@
-import queue
 import sys
+
+# queue.Empty seems to have moved
+if sys.version_info[0] >= 3:
+    import queue
+else:
+    from multiprocessing import queues as queue
+
 import time
 import unittest
 from multiprocessing import Process, Queue
