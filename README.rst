@@ -41,6 +41,8 @@ But please feel free to check out other awesome test runners:
 Support
 -------
 
+TODO: Add TravisCI integration to validate this all the time?
+
 Tested under OSX, Linux (Ubuntu). YMMV with other platforms.
 
 Python 2.7+, 3.4+
