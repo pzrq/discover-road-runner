@@ -23,23 +23,31 @@ def get_apps_after_exclusions():
 
 
 class HijackTextTestResult(unittest.TextTestResult):
-    def addError(self, test, err):
-        super(HijackTextTestResult, self).addError(test, err)
-        write = self._original_stderr.write
+
+    @staticmethod
+    def repro(test):
+        """
+        String designed to be copied and pasted directly after `manage.py test`.
+        """
         fast_repro = '.'.join((
             test.__module__,
             test.__class__.__name__,
             test._testMethodName,
         ))
-        write('\n%s %s' % (colored('ERROR:', 'red'), self.getDescription(test)))
+        return colored(fast_repro, 'cyan')
+
+    def addError(self, test, err):
+        super(HijackTextTestResult, self).addError(test, err)
+        write = self._original_stderr.write
         error_str = self._exc_info_to_string(err, test)
+        write('\n%s %s' % ('ERROR:', self.repro(test)))
         write('\n%s' % error_str)
 
     def addFailure(self, test, err):
         super(HijackTextTestResult, self).addFailure(test, err)
         write = self._original_stderr.write
-        write('\n%s %s' % (colored('FAIL:', 'red'), self.getDescription(test)))
         error_str = self._exc_info_to_string(err, test)
+        write('\n%s %s' % ('FAIL:', self.repro(test)))
         write('\n%s' % error_str)
 
 

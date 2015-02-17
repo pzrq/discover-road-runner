@@ -10,6 +10,7 @@ Yes. Why?
 Features:
 
 *   Traffic-light red / yellow / green feedback
+*   Cyan for fast repro strings
 
 Hence prioritised actionable information should be (reverse order to command line):
 
