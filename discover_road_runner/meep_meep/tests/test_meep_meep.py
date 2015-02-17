@@ -1,8 +1,9 @@
 import unittest
+
 from django.test import SimpleTestCase
 
 
-class BasicTest(SimpleTestCase):
+class CombinedTest(SimpleTestCase):
 
     def test_success(self):
         self.assertEqual(1 + 1, 2)
