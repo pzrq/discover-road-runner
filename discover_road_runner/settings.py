@@ -45,6 +45,7 @@ INSTALLED_APPS = (
     'django.contrib.staticfiles',
     'discover_road_runner.acme',
     'discover_road_runner.coyote',
+    'discover_road_runner.famishius',
     'discover_road_runner.meep_meep',
 )
 
