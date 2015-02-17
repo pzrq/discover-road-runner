@@ -16,16 +16,16 @@ Yes. Why?
 Features:
 
 *   Traffic-light red / yellow / green feedback
-*   Cyan for fast repro strings
+*   Cyan for fast repro strings - if you can't reproduce it, you can't fix it
+*   Full stack trace as soon as that error occurs, without `--verbosity=2`
+*   MARS: Minimal app reproduction summary, for faster copy/paste test repro
+*   `TEST_RUNNER_EXCLUDE_APPS` - setting to exclude problematic apps
+    such as third party apps that don't play nice, or slow / god apps, e.g. ::
 
-Hence prioritised actionable information should be (reverse order to command line):
-
-    1. Print overall
-    2. Print last test failure
-    3. Print minimal app-reproduction summary, i.e. failing apps on one line, i.e. ./manage.py test mathspace.blog mathspace.schools
-    4. Print skipped tests apps on one line.
-    5: Alphabetical order app summary.
-    6. Print full test failures.
+        TEST_RUNNER_EXCLUDE_APPS = (
+            # Would like it if this ran faster, assume everyone else tests it
+            'django.contrib.auth',
+        )
 
 But please feel free to check out other awesome test runners:
 

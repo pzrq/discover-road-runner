@@ -130,6 +130,30 @@ class DiscoverRoadRunner(DiscoverRunner):
         while not result_queue.empty():
             results.append(result_queue.get())
 
+        mars = [
+            r['test_label']
+            for r in results
+            if r['fail_count'] or r['error_count']
+        ]
+        skippy = [
+            r['test_label']
+            for r in results
+            if r['skip_count'] and r['test_label'] not in mars
+        ]
+        if mars or skippy:
+            line = ''.join((
+                '---Copy/Paste-after-manage-py-test---',
+                colored('Skipped', 'yellow'),
+                '-or-',
+                colored('MARS', 'red'),
+                '-' * 28,
+            ))
+            print(line)
+            if skippy:
+                print(colored(' '.join(skippy), 'yellow'))
+            if mars:
+                print(colored(' '.join(mars), 'red'))
+
         merged = {
             'test_label': 'OVERALL',
             'run': sum([r['run'] for r in results]),
