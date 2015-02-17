@@ -1,8 +1,8 @@
 import queue
 import sys
-from multiprocessing import Process, Queue
 import time
 import unittest
+from multiprocessing import Process, Queue
 
 from billiard import cpu_count
 from django.conf import settings
