@@ -23,7 +23,8 @@ Features:
     such as third party apps that don't play nice, or slow / god apps, e.g. ::
 
         TEST_RUNNER_EXCLUDE_APPS = (
-            # Would like it if this ran faster, assume everyone else tests it
+            # Would like it if this ran faster,
+            # trust the authors to get it right
             'django.contrib.auth',
         )
 
