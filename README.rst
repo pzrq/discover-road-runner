@@ -40,6 +40,10 @@ Getting it
 
 pip install -e git+https://github.com/pzrq/discover-road-runner.git#egg=discover_road_runner
 
+Then in your `settings.py` file::
+
+    TEST_RUNNER = 'discover_road_runner.runners.DiscoverRoadRunner'
+
 
 Support
 -------
