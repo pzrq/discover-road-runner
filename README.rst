@@ -68,6 +68,7 @@ TODO
 Known issues
 ------------
 
+* Django 1.7 & 1.8 appear horribly broken due to issues dealing with migrations...
 * Doesn't work nicely with coverage
 * Doesn't work nicely with PyCharm's unit test runner
 * Doesn't support fuzzy matching like tox does
