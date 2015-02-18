@@ -59,6 +59,12 @@ Please feel free to open issues or contribute back patches via GitHub
 `pull requests <https://help.github.com/articles/creating-a-pull-request/>`_.
 
 
+License
+-------
+
+TODO
+
+
 Known issues
 ------------
 
