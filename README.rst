@@ -38,7 +38,7 @@ But please feel free to check out other awesome test runners:
 Getting it
 ----------
 
-pip install -e git+https://github.com/pzrq/discover-road-runner.git#egg=drr
+pip install -e git+https://github.com/pzrq/discover-road-runner.git#egg=discover_road_runner
 
 
 Support
