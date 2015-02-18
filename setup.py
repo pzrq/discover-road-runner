@@ -1,6 +1,13 @@
 from setuptools import find_packages, setup
 
 
+install_requires = [
+    'Django>=1.6.10',
+    'billiard>=3.3.0.19',
+    'termcolor>=1.1.0',
+]
+
+
 setup(
     name='Discover Road Runner',
     version='0.1',
@@ -13,6 +20,7 @@ setup(
     license='',  # TODO: Investigate and specify licence
     packages=find_packages(),
     include_package_data=True,
+    install_requires=install_requires,
     scripts=[],
     entry_points={},
     extras_require={},
