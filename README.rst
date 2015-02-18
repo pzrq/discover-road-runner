@@ -73,3 +73,4 @@ Known issues
 * Doesn't work nicely with PyCharm's unit test runner
 * Doesn't support fuzzy matching like tox does
 * `./manage.py test typo` shouldn't print in nice green...
+* If run for a single test_label, MARS should print the just the individual failing tests
