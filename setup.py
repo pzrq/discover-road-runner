@@ -15,7 +15,7 @@ setup(
     author='Peter Schmidt',
     author_email='peter@peterjs.com',
     description=('Running tests should be a fun voyage of '
-                 'learning and discovery. Built on the maxims of productivity,'
+                 'learning and discovery. Built on the maxims of productivity, '
                  'the Django app and multiprocessing.'),
     license='',  # TODO: Investigate and specify licence
     packages=find_packages(),
