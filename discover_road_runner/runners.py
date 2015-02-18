@@ -9,6 +9,7 @@ else:
 import time
 import unittest
 from multiprocessing import Process, Queue
+from optparse import make_option
 
 from billiard import cpu_count
 from django.conf import settings
@@ -18,8 +19,19 @@ from termcolor import colored
 
 
 class DiscoverRoadRunner(DiscoverRunner):
+    option_list = DiscoverRunner.option_list + (
+        make_option(
+            '-c', '--concurrency',
+            action='store', dest='concurrency', default=None,
+            help='Number of additional parallel processes to run. '
+                 '--concurrency=0 is thus special - it means run in the '
+                 'same Python process.'),
+    )
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, concurrency, *args, **kwargs):
+        if concurrency is None or int(concurrency) < 0:
+            concurrency = cpu_count()
+        self.concurrency = int(concurrency)
         self.stream = sys.stderr
         self.original_stream = self.stream
         super(DiscoverRoadRunner, self).__init__(*args, **kwargs)
@@ -120,15 +132,17 @@ class DiscoverRoadRunner(DiscoverRunner):
             source_queue.put(item)
 
         result_queue = Queue(maxsize=len(test_labels))
-        for _ in range(min(cpu_count(), len(test_labels))):
-            # Limit number of processes to cpu_count
-            # so performance tests run more reliably
+        for _ in range(min(self.concurrency, len(test_labels))):
             p = Process(
                 target=multi_proc_run_tests,
                 args=(self, source_queue, result_queue, extra_tests),
             )
             p.start()
             processes.append(p)
+        else:
+            # Concurrency == 0 - run in same process
+            multi_proc_run_tests(self, source_queue, result_queue, extra_tests)
+
         for p in processes:
             p.join()
 
