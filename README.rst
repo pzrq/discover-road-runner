@@ -16,7 +16,7 @@ Yes. Why?
 Features:
 
 *   Traffic-light red / yellow / green feedback
-*   Cyan for fast repro strings - if you can't reproduce it, you can't fix it
+*   Fast repro strings - if you can't reproduce it, you can't fix it
 *   Full stack trace as soon as that error occurs, without `--verbosity=2`
 *   MARS: Minimal app reproduction summary, for faster copy/paste test repro
 *   `TEST_RUNNER_EXCLUDE_APPS` - setting to exclude problematic apps

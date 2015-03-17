@@ -62,7 +62,7 @@ class DiscoverRoadRunner(DiscoverRunner):
                     test.__class__.__name__,
                     test._testMethodName,
                 ))
-                return colored(fast_repro, 'cyan')
+                return colored(fast_repro, 'red')
 
             def addError(self, test, err):
                 super(HijackTextTestResult, self).addError(test, err)
