@@ -137,18 +137,23 @@ class DiscoverRoadRunner(DiscoverRunner):
         # to get most of the performance boost in downstream projects,
         # should get even more with --keepdb
         old_config = self.setup_databases()
+        queries = [
+            ''.join(line for line in database_wrapper.connection.iterdump())
+            for database_wrapper in connections.all()
+        ]
+        print(queries)
 
         result_queue = Queue(maxsize=len(test_labels))
         for _ in range(min(self.concurrency, len(test_labels))):
             p = Process(
                 target=multi_proc_run_tests,
-                args=(self, source_queue, result_queue, extra_tests),
+                args=(self, source_queue, result_queue, extra_tests, queries),
             )
             p.start()
             processes.append(p)
         else:
             # Concurrency == 0 - run in same process
-            multi_proc_run_tests(self, source_queue, result_queue, extra_tests)
+            multi_proc_run_tests(self, source_queue, result_queue, extra_tests, queries)
 
         for p in processes:
             p.join()
@@ -252,7 +257,7 @@ def build_message(extra_msg_dict):
     return msg
 
 
-def multi_proc_run_tests(pickled_self, source_queue, result_queue, extra_tests):
+def multi_proc_run_tests(pickled_self, source_queue, result_queue, extra_tests, queries):
     """
     This is a version of `DiscoverRunner.run_tests` that is written to be
     run as a single thread, but run in parallel with other test processes.
@@ -275,8 +280,8 @@ def multi_proc_run_tests(pickled_self, source_queue, result_queue, extra_tests):
         suite = pickled_self.build_suite([test_label], extra_tests)
 
         # Can't safely setup_databases until after suite has been built
-        clone_sqlite_db()
-        old_config = pickled_self.setup_databases()
+        create_cloned_sqlite_db(queries)
+        # old_config = pickled_self.setup_databases()
 
         stream = getattr(pickled_self, 'stream', sys.stderr)
         result = pickled_self.run_suite(suite, stream=stream)
@@ -294,19 +299,17 @@ def multi_proc_run_tests(pickled_self, source_queue, result_queue, extra_tests):
         print(full_msg)
 
         # Copy the behaviour of the old run_tests method
-        pickled_self.teardown_databases(old_config)
+        # pickled_self.teardown_databases(old_config)
         pickled_self.teardown_test_environment()
         result_queue.put(extra_msg_dict)
 
 
-def clone_sqlite_db():
+def create_cloned_sqlite_db(queries):
     """
     Magic. Inspired by:
     http://stackoverflow.com/questions/8045602/how-can-i-copy-an-in-memory-sqlite-database-to-another-in-memory-sqlite-database
     """
-    for database_wrapper in connections.all():
-        old_connection = database_wrapper.connection
-        query = ''.join(line for line in old_connection.iterdump())
+    for query, database_wrapper in zip(queries, connections.all()):
         new_connection = sqlite3.connect(':memory:')
         new_connection.executescript(query)
         database_wrapper.connection = new_connection
