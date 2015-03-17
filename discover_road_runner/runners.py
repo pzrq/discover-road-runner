@@ -134,7 +134,9 @@ class DiscoverRoadRunner(DiscoverRunner):
             source_queue.put(item)
 
         # Run slow migrations first, then copy resulting DB later
-        self.setup_databases()
+        # to get most of the performance boost in downstream projects,
+        # should get even more with --keepdb
+        old_config = self.setup_databases()
 
         result_queue = Queue(maxsize=len(test_labels))
         for _ in range(min(self.concurrency, len(test_labels))):
@@ -197,6 +199,7 @@ class DiscoverRoadRunner(DiscoverRunner):
         ))
         msg = colored(final_result, color=get_colour(merged), attrs=['bold'])
         print(msg)
+        self.teardown_databases(old_config)
 
 
 def build_short_summary(extra_msg_dict):
@@ -271,9 +274,9 @@ def multi_proc_run_tests(pickled_self, source_queue, result_queue, extra_tests):
         pickled_self.setup_test_environment()
         suite = pickled_self.build_suite([test_label], extra_tests)
 
-        # Instead of setting up DBs after building the suite, set up before.
-        # old_config = pickled_self.setup_databases()
+        # Can't safely setup_databases until after suite has been built
         clone_sqlite_db()
+        old_config = pickled_self.setup_databases()
 
         stream = getattr(pickled_self, 'stream', sys.stderr)
         result = pickled_self.run_suite(suite, stream=stream)
@@ -291,8 +294,7 @@ def multi_proc_run_tests(pickled_self, source_queue, result_queue, extra_tests):
         print(full_msg)
 
         # Copy the behaviour of the old run_tests method
-        # TODO: Probably should restore this... but the process goes away so meh
-        # pickled_self.teardown_databases(old_config)
+        pickled_self.teardown_databases(old_config)
         pickled_self.teardown_test_environment()
         result_queue.put(extra_msg_dict)
 
