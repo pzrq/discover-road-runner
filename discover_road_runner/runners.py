@@ -1,3 +1,4 @@
+import sqlite3
 import sys
 
 # queue.Empty seems to have moved
@@ -13,6 +14,7 @@ from optparse import make_option
 
 from billiard import cpu_count
 from django.conf import settings
+from django.db import connections
 from django.db.models import get_apps
 from django.test.runner import DiscoverRunner
 from termcolor import colored
@@ -130,6 +132,9 @@ class DiscoverRoadRunner(DiscoverRunner):
         source_queue = Queue(maxsize=len(test_labels))
         for item in test_labels:
             source_queue.put(item)
+
+        # Run slow migrations first, then copy resulting DB later
+        self.setup_databases()
 
         result_queue = Queue(maxsize=len(test_labels))
         for _ in range(min(self.concurrency, len(test_labels))):
@@ -265,7 +270,11 @@ def multi_proc_run_tests(pickled_self, source_queue, result_queue, extra_tests):
         start = time.time()
         pickled_self.setup_test_environment()
         suite = pickled_self.build_suite([test_label], extra_tests)
-        old_config = pickled_self.setup_databases()
+
+        # Instead of setting up DBs after building the suite, set up before.
+        # old_config = pickled_self.setup_databases()
+        clone_sqlite_db()
+
         stream = getattr(pickled_self, 'stream', sys.stderr)
         result = pickled_self.run_suite(suite, stream=stream)
 
@@ -282,6 +291,20 @@ def multi_proc_run_tests(pickled_self, source_queue, result_queue, extra_tests):
         print(full_msg)
 
         # Copy the behaviour of the old run_tests method
-        pickled_self.teardown_databases(old_config)
+        # TODO: Probably should restore this... but the process goes away so meh
+        # pickled_self.teardown_databases(old_config)
         pickled_self.teardown_test_environment()
         result_queue.put(extra_msg_dict)
+
+
+def clone_sqlite_db():
+    """
+    Magic. Inspired by:
+    http://stackoverflow.com/questions/8045602/how-can-i-copy-an-in-memory-sqlite-database-to-another-in-memory-sqlite-database
+    """
+    for database_wrapper in connections.all():
+        old_connection = database_wrapper.connection
+        query = ''.join(line for line in old_connection.iterdump())
+        new_connection = sqlite3.connect(':memory:')
+        new_connection.executescript(query)
+        database_wrapper.connection = new_connection
