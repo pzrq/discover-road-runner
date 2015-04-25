@@ -1,3 +1,4 @@
+import os
 import sys
 
 # queue.Empty seems to have moved
@@ -28,6 +29,9 @@ class DiscoverRoadRunner(DiscoverRunner):
             help='Number of additional parallel processes to run. '
                  '--concurrency=0 is thus special - it means run in the '
                  'same Python process.'),
+        make_option(
+            '-r', '--ramdb', action='store_true', dest='ramdb', default=False,
+            help='Preserve the :memory:, or RAM test database between runs.')
     )
 
     def __init__(self, concurrency, *args, **kwargs):
@@ -36,6 +40,7 @@ class DiscoverRoadRunner(DiscoverRunner):
         self.concurrency = int(concurrency)
         self.stream = sys.stderr
         self.original_stream = self.stream
+        self.ramdb = kwargs['ramdb']
         super(DiscoverRoadRunner, self).__init__(*args, **kwargs)
 
     @staticmethod
@@ -143,17 +148,36 @@ class DiscoverRoadRunner(DiscoverRunner):
                 ('extra_tests', self.build_suite(None, extra_tests))
             )
 
-        # Run slow migrations first, then copy resulting DB later
-        # to get most of the performance boost in downstream projects
-        old_config = self.setup_databases()
-        queries = []
-        for database_wrapper in connections.all():
-            queries.append(
-                ''.join(line
-                        for line in database_wrapper.connection.iterdump())
-            )
-            # Work around :memory: in django/db/backends/sqlite3/base.py
-            BaseDatabaseWrapper.close(database_wrapper)
+        if self.ramdb and all(os.path.exists(db_name + '.sql')
+                              for db_name in settings.DATABASES):
+            # Have run before, reuse the RAM DB.
+            in_files = [
+                db_name + '.sql'
+                for db_name in settings.DATABASES
+            ]
+            print('Reusing database files: {}'.format(', '.join(in_files)))
+            queries = []
+            for in_file_name in in_files:
+                with open(in_file_name) as infile:
+                    queries.append('\n'.join(infile.readlines()))
+        else:
+            # Only run the slow migrations if --ramdb is not specified,
+            # or running for first time
+            old_config = self.setup_databases()
+            queries = []
+            for database_wrapper in connections.all():
+                connection = database_wrapper.connection
+                sql = '\n'.join(line for line in connection.iterdump())
+                queries.append(sql)
+                # Work around :memory: in django/db/backends/sqlite3/base.py
+                BaseDatabaseWrapper.close(database_wrapper)
+
+                if self.ramdb:
+                    # TODO: Git/Hg integration for several RAM DBs perhaps?
+                    mem, db_name = database_wrapper.creation.test_db_signature()
+                    with open(db_name+'.sql', 'w') as outfile:
+                        outfile.write(sql)
+            self.teardown_databases(old_config)
 
         result_queue = Queue(maxsize=len(test_labels) + 1)
         process_args = (self, source_queue, result_queue, queries)
@@ -214,7 +238,6 @@ class DiscoverRoadRunner(DiscoverRunner):
         ))
         msg = colored(final_result, color=get_colour(merged), attrs=['bold'])
         print(msg)
-        self.teardown_databases(old_config)
         self.teardown_test_environment()
 
 
