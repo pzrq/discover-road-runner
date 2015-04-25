@@ -275,10 +275,6 @@ def multi_proc_run_tests(pickled_self, source_queue, result_queue, queries):
     It has also been augmented to provide informative breakdowns for each of
     the test_label(s) placed into the source_queue.
     """
-    # Can't safely setup_databases until after suite has been built
-    create_cloned_sqlite_db(queries)
-    # old_config = pickled_self.setup_databases()
-
     # Get any test apps / labels in the source_queue until it is empty
     while True:
         try:
@@ -290,6 +286,10 @@ def multi_proc_run_tests(pickled_self, source_queue, result_queue, queries):
         # Printing here can't be made atomic cleanly at verbosity >= 2,
         # i.e. without hacks I don't want to do and it's off the default flows
         start = time.time()
+
+        # Can't safely setup_databases until after suites have been built
+        create_cloned_sqlite_db(queries)
+
         stream = getattr(pickled_self, 'stream', sys.stderr)
         result = pickled_self.run_suite(suite, stream=stream)
 
@@ -314,6 +314,9 @@ def create_cloned_sqlite_db(queries):
     http://stackoverflow.com/questions/8045602/how-can-i-copy-an-in-memory-sqlite-database-to-another-in-memory-sqlite-database
     """
     for query_list, database_wrapper in zip(queries, connections.all()):
+        # Work around :memory: in django/db/backends/sqlite3/base.py
+        BaseDatabaseWrapper.close(database_wrapper)
+
         cursor = database_wrapper.cursor()
         for sql in query_list.split(';'):
             sql += ';'
