@@ -68,9 +68,12 @@ TODO
 Known issues
 ------------
 
-* Django 1.7 & 1.8 appear horribly broken due to issues dealing with migrations...
+* Only supports the SQLite3 backend, to work around migrations taking forever
+* Django 1.8 may still be horribly broken due to issues dealing with migrations
+* Does not tally expected failures / unexpected successes (yet!)
 * Doesn't work nicely with coverage
 * Doesn't work nicely with PyCharm's unit test runner
 * Doesn't support fuzzy matching like tox does
+* Probably won't work with TransactionTestCase
 * `./manage.py test typo` shouldn't print in nice green...
 * If run for a single test_label, MARS should print the just the individual failing tests

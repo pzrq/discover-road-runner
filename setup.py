@@ -9,7 +9,7 @@ install_requires = [
 
 
 setup(
-    name='Discover Road Runner',
+    name='discover road runner',
     version='0.1',
     url='https://github.com/pzrq/discover-road-runner',
     author='Peter Schmidt',
