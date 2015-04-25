@@ -312,6 +312,7 @@ def create_cloned_sqlite_db(queries):
     """
     Magic. Inspired by:
     http://stackoverflow.com/questions/8045602/how-can-i-copy-an-in-memory-sqlite-database-to-another-in-memory-sqlite-database
+    http://stackoverflow.com/questions/8242837/django-multiprocessing-and-database-connections
     """
     for query_list, database_wrapper in zip(queries, connections.all()):
         # Work around :memory: in django/db/backends/sqlite3/base.py
