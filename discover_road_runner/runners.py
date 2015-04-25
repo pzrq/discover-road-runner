@@ -144,16 +144,14 @@ class DiscoverRoadRunner(DiscoverRunner):
         print(queries)
 
         result_queue = Queue(maxsize=len(test_labels))
+        process_args = (self, source_queue, result_queue, extra_tests, queries)
         for _ in range(min(self.concurrency, len(test_labels))):
-            p = Process(
-                target=multi_proc_run_tests,
-                args=(self, source_queue, result_queue, extra_tests, queries),
-            )
+            p = Process(target=multi_proc_run_tests, args=process_args)
             p.start()
             processes.append(p)
         else:
             # Concurrency == 0 - run in same process
-            multi_proc_run_tests(self, source_queue, result_queue, extra_tests, queries)
+            multi_proc_run_tests(*process_args)
 
         for p in processes:
             p.join()
