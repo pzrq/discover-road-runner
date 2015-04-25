@@ -17,7 +17,7 @@ from django.conf import settings
 from django.db import connections
 from django.db.backends import BaseDatabaseWrapper
 from django.db.models import get_apps
-from django.test.runner import DiscoverRunner
+from django.test.runner import DiscoverRunner, dependency_ordered
 from termcolor import colored
 
 
@@ -160,7 +160,12 @@ class DiscoverRoadRunner(DiscoverRunner):
             for in_file_name in in_files:
                 with open(in_file_name) as infile:
                     queries.append('\n'.join(infile.readlines()))
+            hijack_setup_databases(self.verbosity, self.interactive)
+
         else:
+            start = time.time()
+            print('Running (often slow) migrations... \n'
+                  'Hint: Use --ramdb to reuse the final stored SQL later.')
             # Only run the slow migrations if --ramdb is not specified,
             # or running for first time
             old_config = self.setup_databases()
@@ -178,6 +183,10 @@ class DiscoverRoadRunner(DiscoverRunner):
                     with open(db_name+'.sql', 'w') as outfile:
                         outfile.write(sql)
             self.teardown_databases(old_config)
+            msg = 'Setup, migrations, ... completed in {:.3f} seconds'.format(
+                time.time() - start
+            )
+            print(msg)
 
         result_queue = Queue(maxsize=len(test_labels) + 1)
         process_args = (self, source_queue, result_queue, queries)
@@ -346,3 +355,76 @@ def create_cloned_sqlite_db(queries):
             sql += ';'
             cursor.execute(sql)
         database_wrapper.connection.commit()
+
+
+def hijack_setup_databases(verbosity, interactive, **kwargs):
+    from django.db import connections, DEFAULT_DB_ALIAS
+
+    # First pass -- work out which databases actually need to be created,
+    # and which ones are test mirrors or duplicate entries in DATABASES
+    mirrored_aliases = {}
+    test_databases = {}
+    dependencies = {}
+    default_sig = connections[DEFAULT_DB_ALIAS].creation.test_db_signature()
+    for alias in connections:
+        connection = connections[alias]
+        test_settings = connection.settings_dict['TEST']
+        if test_settings['MIRROR']:
+            # If the database is marked as a test mirror, save
+            # the alias.
+            mirrored_aliases[alias] = test_settings['MIRROR']
+        else:
+            # Store a tuple with DB parameters that uniquely identify it.
+            # If we have two aliases with the same values for that tuple,
+            # we only need to create the test database once.
+            item = test_databases.setdefault(
+                connection.creation.test_db_signature(),
+                (connection.settings_dict['NAME'], set())
+            )
+            item[1].add(alias)
+
+            if 'DEPENDENCIES' in test_settings:
+                dependencies[alias] = test_settings['DEPENDENCIES']
+            else:
+                if alias != DEFAULT_DB_ALIAS and connection.creation.test_db_signature() != default_sig:
+                    dependencies[alias] = test_settings.get('DEPENDENCIES', [DEFAULT_DB_ALIAS])
+
+    # Second pass -- actually create the databases.
+    old_names = []
+    mirrors = []
+
+    for signature, (db_name, aliases) in dependency_ordered(
+            test_databases.items(), dependencies):
+        test_db_name = None
+        # Actually create the database for the first connection
+        for alias in aliases:
+            connection = connections[alias]
+            if test_db_name is None:
+
+                # TODO: ALL I WANT TO HIJACK IS THIS SO I CAN
+                # TODO: ... SKIP SLOW call_command('migrations', ...)
+                # TODO: ... replacing it with my faster version if on 2nd run
+
+                c_self = connection.creation
+                # test_db_name = connection.creation.create_test_db(
+                test_database_name = c_self._create_test_db(
+                    verbosity,
+                    autoclobber=not interactive,
+                    # TODO: This probably means I don't need other TODOs for TransactionTestCase...
+                    # serialize=connection.settings_dict.get("TEST", {}).get("SERIALIZE", True),
+                )
+                c_self.connection.close()
+                settings.DATABASES[c_self.connection.alias]["NAME"] = test_database_name
+                c_self.connection.settings_dict["NAME"] = test_database_name
+                destroy = True
+            else:
+                connection.settings_dict['NAME'] = test_db_name
+                destroy = False
+            old_names.append((connection, db_name, destroy))
+
+    for alias, mirror_alias in mirrored_aliases.items():
+        mirrors.append((alias, connections[alias].settings_dict['NAME']))
+        connections[alias].settings_dict['NAME'] = (
+            connections[mirror_alias].settings_dict['NAME'])
+
+    return old_names, mirrors
