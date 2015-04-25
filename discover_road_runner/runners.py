@@ -156,7 +156,7 @@ class DiscoverRoadRunner(DiscoverRunner):
             BaseDatabaseWrapper.close(database_wrapper)
 
         result_queue = Queue(maxsize=len(test_labels) + 1)
-        process_args = (self, source_queue, result_queue, extra_tests, queries)
+        process_args = (self, source_queue, result_queue, queries)
         for _ in range(min(self.concurrency, len(test_labels))):
             p = Process(target=multi_proc_run_tests, args=process_args)
             p.start()
@@ -268,7 +268,7 @@ def build_message(extra_msg_dict):
     return msg
 
 
-def multi_proc_run_tests(pickled_self, source_queue, result_queue, extra_tests, queries):
+def multi_proc_run_tests(pickled_self, source_queue, result_queue, queries):
     """
     This is a version of `DiscoverRunner.run_tests` that is written to be
     run as a single thread, but run in parallel with other test processes.
