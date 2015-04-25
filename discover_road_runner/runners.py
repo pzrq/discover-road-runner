@@ -177,11 +177,11 @@ class DiscoverRoadRunner(DiscoverRunner):
                 # Work around :memory: in django/db/backends/sqlite3/base.py
                 BaseDatabaseWrapper.close(database_wrapper)
 
-                if self.ramdb:
-                    # TODO: Git/Hg integration for several RAM DBs perhaps?
-                    mem, db_name = database_wrapper.creation.test_db_signature()
-                    with open(db_name+'.sql', 'w') as outfile:
-                        outfile.write(sql)
+                # TODO: Where should these get saved?
+                # TODO: Git/Hg integration for several RAM DBs perhaps?
+                mem, db_name = database_wrapper.creation.test_db_signature()
+                with open(db_name+'.sql', 'w') as outfile:
+                    outfile.write(sql)
             self.teardown_databases(old_config)
             msg = 'Setup, migrations, ... completed in {:.3f} seconds'.format(
                 time.time() - start
