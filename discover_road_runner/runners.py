@@ -1,4 +1,3 @@
-import sqlite3
 import sys
 
 # queue.Empty seems to have moved
@@ -15,6 +14,7 @@ from optparse import make_option
 from billiard import cpu_count
 from django.conf import settings
 from django.db import connections
+from django.db.backends import BaseDatabaseWrapper
 from django.db.models import get_apps
 from django.test.runner import DiscoverRunner
 from termcolor import colored
@@ -128,22 +128,34 @@ class DiscoverRoadRunner(DiscoverRunner):
             if self.verbosity == 1:
                 self.verbosity = 0
 
+        self.setup_test_environment()
+
+        # Prepare (often many) test suites to be run across multiple processes
+        # suite = self.build_suite(test_labels, extra_tests)
         processes = []
-        source_queue = Queue(maxsize=len(test_labels))
-        for item in test_labels:
-            source_queue.put(item)
+        source_queue = Queue(maxsize=len(test_labels) + 1)
+
+        for label in test_labels:
+            suite = self.build_suite([label])
+            source_queue.put((label, suite))
+        if extra_tests:
+            source_queue.put(
+                ('extra_tests', self.build_suite(None, extra_tests))
+            )
 
         # Run slow migrations first, then copy resulting DB later
-        # to get most of the performance boost in downstream projects,
-        # should get even more with --keepdb
+        # to get most of the performance boost in downstream projects
         old_config = self.setup_databases()
-        queries = [
-            ''.join(line for line in database_wrapper.connection.iterdump())
-            for database_wrapper in connections.all()
-        ]
-        print(queries)
+        queries = []
+        for database_wrapper in connections.all():
+            queries.append(
+                ''.join(line
+                        for line in database_wrapper.connection.iterdump())
+            )
+            # Work around :memory: in django/db/backends/sqlite3/base.py
+            BaseDatabaseWrapper.close(database_wrapper)
 
-        result_queue = Queue(maxsize=len(test_labels))
+        result_queue = Queue(maxsize=len(test_labels) + 1)
         process_args = (self, source_queue, result_queue, extra_tests, queries)
         for _ in range(min(self.concurrency, len(test_labels))):
             p = Process(target=multi_proc_run_tests, args=process_args)
@@ -203,6 +215,7 @@ class DiscoverRoadRunner(DiscoverRunner):
         msg = colored(final_result, color=get_colour(merged), attrs=['bold'])
         print(msg)
         self.teardown_databases(old_config)
+        self.teardown_test_environment()
 
 
 def build_short_summary(extra_msg_dict):
@@ -262,11 +275,14 @@ def multi_proc_run_tests(pickled_self, source_queue, result_queue, extra_tests, 
     It has also been augmented to provide informative breakdowns for each of
     the test_label(s) placed into the source_queue.
     """
+    # Can't safely setup_databases until after suite has been built
+    create_cloned_sqlite_db(queries)
+    # old_config = pickled_self.setup_databases()
 
     # Get any test apps / labels in the source_queue until it is empty
     while True:
         try:
-            test_label = source_queue.get(block=False)
+            test_label, suite = source_queue.get(block=False)
         except queue.Empty:
             return
 
@@ -274,13 +290,6 @@ def multi_proc_run_tests(pickled_self, source_queue, result_queue, extra_tests, 
         # Printing here can't be made atomic cleanly at verbosity >= 2,
         # i.e. without hacks I don't want to do and it's off the default flows
         start = time.time()
-        pickled_self.setup_test_environment()
-        suite = pickled_self.build_suite([test_label], extra_tests)
-
-        # Can't safely setup_databases until after suite has been built
-        create_cloned_sqlite_db(queries)
-        # old_config = pickled_self.setup_databases()
-
         stream = getattr(pickled_self, 'stream', sys.stderr)
         result = pickled_self.run_suite(suite, stream=stream)
 
@@ -296,9 +305,6 @@ def multi_proc_run_tests(pickled_self, source_queue, result_queue, extra_tests, 
         # i.e. no annoying interleaving of test output should be possible
         print(full_msg)
 
-        # Copy the behaviour of the old run_tests method
-        # pickled_self.teardown_databases(old_config)
-        pickled_self.teardown_test_environment()
         result_queue.put(extra_msg_dict)
 
 
@@ -307,7 +313,9 @@ def create_cloned_sqlite_db(queries):
     Magic. Inspired by:
     http://stackoverflow.com/questions/8045602/how-can-i-copy-an-in-memory-sqlite-database-to-another-in-memory-sqlite-database
     """
-    for query, database_wrapper in zip(queries, connections.all()):
-        new_connection = sqlite3.connect(':memory:')
-        new_connection.executescript(query)
-        database_wrapper.connection = new_connection
+    for query_list, database_wrapper in zip(queries, connections.all()):
+        cursor = database_wrapper.cursor()
+        for sql in query_list.split(';'):
+            sql += ';'
+            cursor.execute(sql)
+        database_wrapper.connection.commit()
