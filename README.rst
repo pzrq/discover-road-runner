@@ -70,6 +70,7 @@ Known issues
 
 * Only supports the SQLite3 backend, to work around migrations taking forever
 * Django 1.8 may still be horribly broken due to issues dealing with migrations
+* Incorrectly reporting OVERALL (run=0, ...) if running a single app.
 * Does not tally expected failures / unexpected successes (yet!)
 * Doesn't work nicely with coverage
 * Doesn't work nicely with PyCharm's unit test runner
