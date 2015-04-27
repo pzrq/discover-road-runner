@@ -30,9 +30,9 @@ Features:
 
 But please feel free to check out other awesome test runners:
 
-* tox
-* nose
-* etc
+* `tox <https://tox.readthedocs.org/en/latest/>`_
+* `nose <http://nose.readthedocs.org/en/latest/index.html>`_
+* `DiscoverRunner (built into Django) <https://docs.djangoproject.com/en/dev/topics/testing/advanced/#using-different-testing-frameworks>`_
 
 
 Getting it
