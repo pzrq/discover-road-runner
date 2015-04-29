@@ -1,4 +1,5 @@
 import os
+import subprocess
 import sys
 
 # queue.Empty seems to have moved
@@ -30,9 +31,10 @@ class DiscoverRoadRunner(DiscoverRunner):
                  '--concurrency=0 is thus special - it means run in the '
                  'same Python process.'),
         make_option(
-            '-r', '--ramdb', action='store_true', dest='ramdb', default=False,
+            '-r', '--ramdb', action='store', dest='ramdb', default='',
             help='Preserve the :memory:, or RAM test database between runs.')
     )
+    DEFAULT_TAG_HASH = 'default'
 
     def __init__(self, concurrency, *args, **kwargs):
         if concurrency is None or int(concurrency) < 0:
@@ -41,6 +43,11 @@ class DiscoverRoadRunner(DiscoverRunner):
         self.stream = sys.stderr
         self.original_stream = self.stream
         self.ramdb = kwargs['ramdb']
+        try:
+            save = settings.LOCAL_CACHE
+        except AttributeError:
+            save = 'local_cache'
+        self.ramdb_saves = os.path.join(os.getcwd(), save)
         super(DiscoverRoadRunner, self).__init__(*args, **kwargs)
 
     @staticmethod
@@ -118,6 +125,51 @@ class DiscoverRoadRunner(DiscoverRunner):
             failfast=self.failfast,
         ).run(suite)
 
+    @classmethod
+    def get_source_control_tag_hash(cls):
+        try:
+            # Try git
+            out = subprocess.Popen(
+                ['git', 'describe', '--always'],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
+            tag_hash = out.communicate()[0]
+            return tag_hash.decode('utf8').strip()
+        except OSError:
+            pass
+
+        try:
+            # Try hg
+            # http://stackoverflow.com/questions/6693209/is-there-an-equivalent-to-gits-describe-function-for-mercurial
+            out = subprocess.Popen(
+                ['hg', 'log', '-r' '.' '--template',
+                 "'{latesttag}-{latesttagdistance}-{node|short}\n'"],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
+            tag_hash = out.communicate()[0]
+            return tag_hash.decode('utf8').strip()
+        except OSError:
+            pass
+
+        return cls.DEFAULT_TAG_HASH
+
+    def get_db_path(self, db_name, tag_hash):
+        return os.path.join(self.ramdb_saves, tag_hash, db_name + '.sql')
+
+    def db_file_paths(self):
+        return [
+            self.get_db_path(db_name, tag_hash=self.ramdb)
+            for db_name in settings.DATABASES
+        ]
+
+    def db_files_exist(self):
+        return all(
+            os.path.exists(db_path)
+            for db_path in self.db_file_paths()
+        )
+
     def run_tests(self, test_labels, extra_tests=None, **kwargs):
         start = time.time()
         if not test_labels:
@@ -148,14 +200,10 @@ class DiscoverRoadRunner(DiscoverRunner):
                 ('extra_tests', self.build_suite(None, extra_tests))
             )
 
-        if self.ramdb and all(os.path.exists(db_name + '.sql')
-                              for db_name in settings.DATABASES):
+        if self.ramdb and self.db_files_exist():
             # Have run before, reuse the RAM DB.
-            in_files = [
-                db_name + '.sql'
-                for db_name in settings.DATABASES
-            ]
-            print('Reusing database files: {}'.format(', '.join(in_files)))
+            in_files = self.db_file_paths()
+            print('Reusing database files: \n{}'.format('\n'.join(in_files)))
             queries = []
             for in_file_name in in_files:
                 with open(in_file_name) as infile:
@@ -164,8 +212,16 @@ class DiscoverRoadRunner(DiscoverRunner):
 
         else:
             start = time.time()
+            tag_hash = self.get_source_control_tag_hash()
+            if tag_hash == self.DEFAULT_TAG_HASH:
+                print('git or hg source control not found, '
+                      'only most recent migration saved')
             print('Running (often slow) migrations... \n'
-                  'Hint: Use --ramdb to reuse the final stored SQL later.')
+                  'Hint: Use --ramdb={} to reuse the final stored SQL later.'
+                  .format(tag_hash))
+            tag_hash = os.path.join(self.ramdb_saves, tag_hash)
+            if not os.path.exists(tag_hash):
+                os.makedirs(tag_hash)
             # Only run the slow migrations if --ramdb is not specified,
             # or running for first time
             old_config = self.setup_databases()
@@ -176,11 +232,8 @@ class DiscoverRoadRunner(DiscoverRunner):
                 queries.append(sql)
                 # Work around :memory: in django/db/backends/sqlite3/base.py
                 BaseDatabaseWrapper.close(database_wrapper)
-
-                # TODO: Where should these get saved?
-                # TODO: Git/Hg integration for several RAM DBs perhaps?
                 mem, db_name = database_wrapper.creation.test_db_signature()
-                with open(db_name+'.sql', 'w') as outfile:
+                with open(self.get_db_path(db_name, tag_hash), 'w') as outfile:
                     outfile.write(sql)
             self.teardown_databases(old_config)
             msg = 'Setup, migrations, ... completed in {:.3f} seconds'.format(
