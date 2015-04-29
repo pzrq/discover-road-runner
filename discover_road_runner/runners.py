@@ -29,17 +29,34 @@ from termcolor import colored
 
 
 class DiscoverRoadRunner(DiscoverRunner):
-    option_list = DiscoverRunner.option_list + (
-        make_option(
+
+    @classmethod
+    def add_arguments(cls, parser):
+        parser.add_argument(
             '-c', '--concurrency',
             action='store', dest='concurrency', default=None,
             help='Number of additional parallel processes to run. '
                  '--concurrency=0 is thus special - it means run in the '
-                 'same Python process.'),
-        make_option(
+                 'same Python process.',
+        )
+        parser.add_argument(
             '-r', '--ramdb', action='store', dest='ramdb', default='',
-            help='Preserve the :memory:, or RAM test database between runs.')
-    )
+            help='Preserve the :memory:, '
+                 'or RAM test database between runs.'
+        )
+    if DJANGO_VERSION[1] < 8:
+        option_list = DiscoverRunner.option_list + (
+            make_option(
+                '-c', '--concurrency',
+                action='store', dest='concurrency', default=None,
+                help='Number of additional parallel processes to run. '
+                     '--concurrency=0 is thus special - it means run in the '
+                     'same Python process.'),
+            make_option(
+                '-r', '--ramdb', action='store', dest='ramdb', default='',
+                help='Preserve the :memory:, '
+                     'or RAM test database between runs.')
+        )
     DEFAULT_TAG_HASH = 'default'
 
     def __init__(self, concurrency, *args, **kwargs):
