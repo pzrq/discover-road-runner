@@ -32,6 +32,7 @@ class DiscoverRoadRunner(DiscoverRunner):
 
     @classmethod
     def add_arguments(cls, parser):
+        super(DiscoverRoadRunner, cls).add_arguments(parser)
         parser.add_argument(
             '-c', '--concurrency',
             action='store', dest='concurrency', default=None,
@@ -40,7 +41,7 @@ class DiscoverRoadRunner(DiscoverRunner):
                  'same Python process.',
         )
         parser.add_argument(
-            '-r', '--ramdb', action='store', dest='ramdb', default='',
+            '-m', '--ramdb', action='store', dest='ramdb', default='',
             help='Preserve the :memory:, '
                  'or RAM test database between runs.'
         )
@@ -53,7 +54,7 @@ class DiscoverRoadRunner(DiscoverRunner):
                      '--concurrency=0 is thus special - it means run in the '
                      'same Python process.'),
             make_option(
-                '-r', '--ramdb', action='store', dest='ramdb', default='',
+                '-m', '--ramdb', action='store', dest='ramdb', default='',
                 help='Preserve the :memory:, '
                      'or RAM test database between runs.')
         )
