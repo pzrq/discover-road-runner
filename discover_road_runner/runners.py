@@ -17,7 +17,12 @@ from billiard import cpu_count
 from django import VERSION as DJANGO_VERSION
 from django.conf import settings
 from django.db import connections
-from django.db.backends import BaseDatabaseWrapper
+
+if DJANGO_VERSION[1] >= 8:
+    from django.db.backends.base.base import BaseDatabaseWrapper
+else:
+    from django.db.backends import BaseDatabaseWrapper
+
 from django.db.models import get_apps
 from django.test.runner import DiscoverRunner, dependency_ordered
 from termcolor import colored
