@@ -14,6 +14,7 @@ from multiprocessing import Process, Queue
 from optparse import make_option
 
 from billiard import cpu_count
+from django import VERSION as DJANGO_VERSION
 from django.conf import settings
 from django.db import connections
 from django.db.backends import BaseDatabaseWrapper
@@ -208,8 +209,10 @@ class DiscoverRoadRunner(DiscoverRunner):
             for in_file_name in in_files:
                 with open(in_file_name) as infile:
                     queries.append('\n'.join(infile.readlines()))
-            hijack_setup_databases(self.verbosity, self.interactive)
-
+            if DJANGO_VERSION[1] >= 7:
+                hijack_setup_databases(self.verbosity, self.interactive)
+            else:
+                self.setup_databases()
         else:
             start = time.time()
             tag_hash = self.get_source_control_tag_hash()
