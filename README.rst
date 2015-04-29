@@ -19,14 +19,6 @@ Features:
 *   Fast repro strings - if you can't reproduce it, you can't fix it
 *   Full stack trace as soon as that error occurs, without `--verbosity=2`
 *   MARS: Minimal app reproduction summary, for faster copy/paste test repro
-*   `TEST_RUNNER_EXCLUDE_APPS` - setting to exclude problematic apps
-    such as third party apps that don't play nice, or slow / god apps, e.g. ::
-
-        TEST_RUNNER_EXCLUDE_APPS = (
-            # Would like it if this ran faster,
-            # trust the authors to get it right
-            'django.contrib.auth',
-        )
 
 But please feel free to check out other awesome test runners:
 
@@ -43,6 +35,25 @@ pip install -e git+https://github.com/pzrq/discover-road-runner.git#egg=discover
 Then in your `settings.py` file::
 
     TEST_RUNNER = 'discover_road_runner.runners.DiscoverRoadRunner'
+
+
+Settings
+--------
+
+Place in your `settings.py` file like every other Django setting.
+
+*   `LOCAL_CACHE` - Path where `--ramdb` databases get stored.
+    Defaults to `local_cache` inside your repository
+    (you might wish to gitignore this).
+
+*   `TEST_RUNNER_EXCLUDE_APPS` - setting to exclude problematic apps
+    such as third party apps that don't play nice, or slow / god apps, e.g. ::
+
+        TEST_RUNNER_EXCLUDE_APPS = (
+            # Would like it if this ran faster,
+            # trust the authors to get it right
+            'django.contrib.auth',
+        )
 
 
 Support

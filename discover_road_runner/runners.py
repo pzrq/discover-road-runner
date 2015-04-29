@@ -1,3 +1,5 @@
+import os
+import subprocess
 import sys
 
 # queue.Empty seems to have moved
@@ -12,11 +14,12 @@ from multiprocessing import Process, Queue
 from optparse import make_option
 
 from billiard import cpu_count
+from django import VERSION as DJANGO_VERSION
 from django.conf import settings
 from django.db import connections
 from django.db.backends import BaseDatabaseWrapper
 from django.db.models import get_apps
-from django.test.runner import DiscoverRunner
+from django.test.runner import DiscoverRunner, dependency_ordered
 from termcolor import colored
 
 
@@ -28,7 +31,11 @@ class DiscoverRoadRunner(DiscoverRunner):
             help='Number of additional parallel processes to run. '
                  '--concurrency=0 is thus special - it means run in the '
                  'same Python process.'),
+        make_option(
+            '-r', '--ramdb', action='store', dest='ramdb', default='',
+            help='Preserve the :memory:, or RAM test database between runs.')
     )
+    DEFAULT_TAG_HASH = 'default'
 
     def __init__(self, concurrency, *args, **kwargs):
         if concurrency is None or int(concurrency) < 0:
@@ -36,6 +43,12 @@ class DiscoverRoadRunner(DiscoverRunner):
         self.concurrency = int(concurrency)
         self.stream = sys.stderr
         self.original_stream = self.stream
+        self.ramdb = kwargs['ramdb']
+        try:
+            save = settings.LOCAL_CACHE
+        except AttributeError:
+            save = 'local_cache'
+        self.ramdb_saves = os.path.join(os.getcwd(), save)
         super(DiscoverRoadRunner, self).__init__(*args, **kwargs)
 
     @staticmethod
@@ -113,6 +126,51 @@ class DiscoverRoadRunner(DiscoverRunner):
             failfast=self.failfast,
         ).run(suite)
 
+    @classmethod
+    def get_source_control_tag_hash(cls):
+        try:
+            # Try git
+            out = subprocess.Popen(
+                ['git', 'describe', '--always'],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
+            tag_hash = out.communicate()[0]
+            return tag_hash.decode('utf8').strip()
+        except OSError:
+            pass
+
+        try:
+            # Try hg
+            # http://stackoverflow.com/questions/6693209/is-there-an-equivalent-to-gits-describe-function-for-mercurial
+            out = subprocess.Popen(
+                ['hg', 'log', '-r' '.' '--template',
+                 "'{latesttag}-{latesttagdistance}-{node|short}\n'"],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
+            tag_hash = out.communicate()[0]
+            return tag_hash.decode('utf8').strip()
+        except OSError:
+            pass
+
+        return cls.DEFAULT_TAG_HASH
+
+    def get_db_path(self, db_name, tag_hash):
+        return os.path.join(self.ramdb_saves, tag_hash, db_name + '.sql')
+
+    def db_file_paths(self):
+        return [
+            self.get_db_path(db_name, tag_hash=self.ramdb)
+            for db_name in settings.DATABASES
+        ]
+
+    def db_files_exist(self):
+        return all(
+            os.path.exists(db_path)
+            for db_path in self.db_file_paths()
+        )
+
     def run_tests(self, test_labels, extra_tests=None, **kwargs):
         start = time.time()
         if not test_labels:
@@ -143,17 +201,48 @@ class DiscoverRoadRunner(DiscoverRunner):
                 ('extra_tests', self.build_suite(None, extra_tests))
             )
 
-        # Run slow migrations first, then copy resulting DB later
-        # to get most of the performance boost in downstream projects
-        old_config = self.setup_databases()
-        queries = []
-        for database_wrapper in connections.all():
-            queries.append(
-                ''.join(line
-                        for line in database_wrapper.connection.iterdump())
+        if self.ramdb and self.db_files_exist():
+            # Have run before, reuse the RAM DB.
+            in_files = self.db_file_paths()
+            print('Reusing database files: \n{}'.format('\n'.join(in_files)))
+            queries = []
+            for in_file_name in in_files:
+                with open(in_file_name) as infile:
+                    queries.append('\n'.join(infile.readlines()))
+            if DJANGO_VERSION[1] >= 7:
+                hijack_setup_databases(self.verbosity, self.interactive)
+            else:
+                self.setup_databases()
+        else:
+            start = time.time()
+            tag_hash = self.get_source_control_tag_hash()
+            if tag_hash == self.DEFAULT_TAG_HASH:
+                print('git or hg source control not found, '
+                      'only most recent migration saved')
+            print('Running (often slow) migrations... \n'
+                  'Hint: Use --ramdb={} to reuse the final stored SQL later.'
+                  .format(tag_hash))
+            tag_hash = os.path.join(self.ramdb_saves, tag_hash)
+            if not os.path.exists(tag_hash):
+                os.makedirs(tag_hash)
+            # Only run the slow migrations if --ramdb is not specified,
+            # or running for first time
+            old_config = self.setup_databases()
+            queries = []
+            for database_wrapper in connections.all():
+                connection = database_wrapper.connection
+                sql = '\n'.join(line for line in connection.iterdump())
+                queries.append(sql)
+                # Work around :memory: in django/db/backends/sqlite3/base.py
+                BaseDatabaseWrapper.close(database_wrapper)
+                mem, db_name = database_wrapper.creation.test_db_signature()
+                with open(self.get_db_path(db_name, tag_hash), 'w') as outfile:
+                    outfile.write(sql)
+            self.teardown_databases(old_config)
+            msg = 'Setup, migrations, ... completed in {:.3f} seconds'.format(
+                time.time() - start
             )
-            # Work around :memory: in django/db/backends/sqlite3/base.py
-            BaseDatabaseWrapper.close(database_wrapper)
+            print(msg)
 
         result_queue = Queue(maxsize=len(test_labels) + 1)
         process_args = (self, source_queue, result_queue, queries)
@@ -214,7 +303,6 @@ class DiscoverRoadRunner(DiscoverRunner):
         ))
         msg = colored(final_result, color=get_colour(merged), attrs=['bold'])
         print(msg)
-        self.teardown_databases(old_config)
         self.teardown_test_environment()
 
 
@@ -323,3 +411,76 @@ def create_cloned_sqlite_db(queries):
             sql += ';'
             cursor.execute(sql)
         database_wrapper.connection.commit()
+
+
+def hijack_setup_databases(verbosity, interactive, **kwargs):
+    from django.db import connections, DEFAULT_DB_ALIAS
+
+    # First pass -- work out which databases actually need to be created,
+    # and which ones are test mirrors or duplicate entries in DATABASES
+    mirrored_aliases = {}
+    test_databases = {}
+    dependencies = {}
+    default_sig = connections[DEFAULT_DB_ALIAS].creation.test_db_signature()
+    for alias in connections:
+        connection = connections[alias]
+        test_settings = connection.settings_dict['TEST']
+        if test_settings['MIRROR']:
+            # If the database is marked as a test mirror, save
+            # the alias.
+            mirrored_aliases[alias] = test_settings['MIRROR']
+        else:
+            # Store a tuple with DB parameters that uniquely identify it.
+            # If we have two aliases with the same values for that tuple,
+            # we only need to create the test database once.
+            item = test_databases.setdefault(
+                connection.creation.test_db_signature(),
+                (connection.settings_dict['NAME'], set())
+            )
+            item[1].add(alias)
+
+            if 'DEPENDENCIES' in test_settings:
+                dependencies[alias] = test_settings['DEPENDENCIES']
+            else:
+                if alias != DEFAULT_DB_ALIAS and connection.creation.test_db_signature() != default_sig:
+                    dependencies[alias] = test_settings.get('DEPENDENCIES', [DEFAULT_DB_ALIAS])
+
+    # Second pass -- actually create the databases.
+    old_names = []
+    mirrors = []
+
+    for signature, (db_name, aliases) in dependency_ordered(
+            test_databases.items(), dependencies):
+        test_db_name = None
+        # Actually create the database for the first connection
+        for alias in aliases:
+            connection = connections[alias]
+            if test_db_name is None:
+
+                # TODO: ALL I WANT TO HIJACK IS THIS SO I CAN
+                # TODO: ... SKIP SLOW call_command('migrations', ...)
+                # TODO: ... replacing it with my faster version if on 2nd run
+
+                c_self = connection.creation
+                # test_db_name = connection.creation.create_test_db(
+                test_database_name = c_self._create_test_db(
+                    verbosity,
+                    autoclobber=not interactive,
+                    # TODO: This probably means I don't need other TODOs for TransactionTestCase...
+                    # serialize=connection.settings_dict.get("TEST", {}).get("SERIALIZE", True),
+                )
+                c_self.connection.close()
+                settings.DATABASES[c_self.connection.alias]["NAME"] = test_database_name
+                c_self.connection.settings_dict["NAME"] = test_database_name
+                destroy = True
+            else:
+                connection.settings_dict['NAME'] = test_db_name
+                destroy = False
+            old_names.append((connection, db_name, destroy))
+
+    for alias, mirror_alias in mirrored_aliases.items():
+        mirrors.append((alias, connections[alias].settings_dict['NAME']))
+        connections[alias].settings_dict['NAME'] = (
+            connections[mirror_alias].settings_dict['NAME'])
+
+    return old_names, mirrors
