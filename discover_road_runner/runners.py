@@ -17,24 +17,47 @@ from billiard import cpu_count
 from django import VERSION as DJANGO_VERSION
 from django.conf import settings
 from django.db import connections
-from django.db.backends import BaseDatabaseWrapper
+
+if DJANGO_VERSION[1] >= 8:
+    from django.db.backends.base.base import BaseDatabaseWrapper
+else:
+    from django.db.backends import BaseDatabaseWrapper
+
 from django.db.models import get_apps
 from django.test.runner import DiscoverRunner, dependency_ordered
 from termcolor import colored
 
 
 class DiscoverRoadRunner(DiscoverRunner):
-    option_list = DiscoverRunner.option_list + (
-        make_option(
+
+    @classmethod
+    def add_arguments(cls, parser):
+        super(DiscoverRoadRunner, cls).add_arguments(parser)
+        parser.add_argument(
             '-c', '--concurrency',
             action='store', dest='concurrency', default=None,
             help='Number of additional parallel processes to run. '
                  '--concurrency=0 is thus special - it means run in the '
-                 'same Python process.'),
-        make_option(
-            '-r', '--ramdb', action='store', dest='ramdb', default='',
-            help='Preserve the :memory:, or RAM test database between runs.')
-    )
+                 'same Python process.',
+        )
+        parser.add_argument(
+            '-m', '--ramdb', action='store', dest='ramdb', default='',
+            help='Preserve the :memory:, '
+                 'or RAM test database between runs.'
+        )
+    if DJANGO_VERSION[1] < 8:
+        option_list = DiscoverRunner.option_list + (
+            make_option(
+                '-c', '--concurrency',
+                action='store', dest='concurrency', default=None,
+                help='Number of additional parallel processes to run. '
+                     '--concurrency=0 is thus special - it means run in the '
+                     'same Python process.'),
+            make_option(
+                '-m', '--ramdb', action='store', dest='ramdb', default='',
+                help='Preserve the :memory:, '
+                     'or RAM test database between runs.')
+        )
     DEFAULT_TAG_HASH = 'default'
 
     def __init__(self, concurrency, *args, **kwargs):
