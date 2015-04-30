@@ -199,6 +199,7 @@ class DiscoverRoadRunner(DiscoverRunner):
         )
 
     def run_tests(self, test_labels, extra_tests=None, **kwargs):
+        extra = 1 if extra_tests else 0
         start = time.time()
         if not test_labels:
             # If no test labels were provided, provide them
@@ -218,7 +219,7 @@ class DiscoverRoadRunner(DiscoverRunner):
         # Prepare (often many) test suites to be run across multiple processes
         # suite = self.build_suite(test_labels, extra_tests)
         processes = []
-        source_queue = Queue(maxsize=len(test_labels) + 1)
+        source_queue = Queue(maxsize=len(test_labels) + extra)
 
         for label in test_labels:
             suite = self.build_suite([label])
@@ -271,9 +272,9 @@ class DiscoverRoadRunner(DiscoverRunner):
             )
             print(msg)
 
-        result_queue = Queue(maxsize=len(test_labels) + 1)
+        result_queue = Queue(maxsize=len(test_labels) + extra)
         process_args = (self, source_queue, result_queue, queries)
-        for _ in range(min(self.concurrency, len(test_labels))):
+        for _ in range(min(self.concurrency, len(test_labels) + extra)):
             p = Process(target=multi_proc_run_tests, args=process_args)
             p.start()
             processes.append(p)
