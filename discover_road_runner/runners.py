@@ -319,6 +319,8 @@ class DiscoverRoadRunner(DiscoverRunner):
             'fail_count': sum([r['fail_count'] for r in results]),
             'error_count': sum([r['error_count'] for r in results]),
             'skip_count': sum([r['skip_count'] for r in results]),
+            'expected_fail_count': sum([r['expected_fail_count'] for r in results]),
+            'unexpected_success_count': sum([r['unexpected_success_count'] for r in results]),
         }
         merged['short_summary'] = build_short_summary(merged)
         end = time.time()
@@ -339,12 +341,18 @@ def build_short_summary(extra_msg_dict):
     failed = extra_msg_dict['fail_count']
     errored = extra_msg_dict['error_count']
     skipped = extra_msg_dict['skip_count']
+    expected_fail = extra_msg_dict['expected_fail_count']
+    unexpected_success = extra_msg_dict['unexpected_success_count']
     if failed:
         short_summary.append('failures=%s' % failed)
     if errored:
         short_summary.append('errors=%s' % errored)
     if skipped:
         short_summary.append('skipped=%s' % skipped)
+    if expected_fail:
+        short_summary.append('expected failures=%s' % expected_fail)
+    if unexpected_success:
+        short_summary.append('unexpected successes=%s' % unexpected_success)
     if short_summary:
         # Add extra , into printed message formatting
         short_summary.append('')
@@ -359,6 +367,8 @@ def extra_msg_dict_from(test_label, result):
         'fail_count': len(result.failures),
         'error_count': len(result.errors),
         'skip_count': len(result.skipped),
+        'expected_fail_count': len(result.expectedFailures),
+        'unexpected_success_count': len(result.unexpectedSuccesses),
     }
     extra_msg_dict['short_summary'] = build_short_summary(extra_msg_dict)
     return extra_msg_dict
@@ -367,7 +377,9 @@ def extra_msg_dict_from(test_label, result):
 def get_colour(extra_msg_dict):
     if extra_msg_dict['error_count'] or extra_msg_dict['fail_count']:
         colour = 'red'
-    elif extra_msg_dict['skip_count']:
+    elif (extra_msg_dict['skip_count'] or
+          extra_msg_dict['expected_fail_count'] or
+          extra_msg_dict['unexpected_success_count']):
         colour = 'yellow'
     else:
         colour = 'green'

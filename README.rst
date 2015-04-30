@@ -87,7 +87,6 @@ Known issues
 ------------
 
 * Only supports the SQLite3 `:memory:` backend.
-* Does not tally expected failures / unexpected successes (yet!)
 * Doesn't work nicely with coverage
 * Doesn't support fuzzy matching like tox does
 * Probably won't work with TransactionTestCase
