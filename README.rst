@@ -87,7 +87,6 @@ Known issues
 ------------
 
 * Only supports the SQLite3 `:memory:` backend.
-* Incorrectly reporting OVERALL (run=0, ...) if running a single app.
 * Does not tally expected failures / unexpected successes (yet!)
 * Doesn't work nicely with coverage
 * Doesn't support fuzzy matching like tox does

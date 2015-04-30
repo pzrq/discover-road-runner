@@ -286,7 +286,7 @@ class DiscoverRoadRunner(DiscoverRunner):
             p.join()
 
         results = []
-        while not result_queue.empty():
+        for _ in range(len(test_labels) + extra):
             results.append(result_queue.get())
 
         mars = [
