@@ -60,19 +60,23 @@ class DiscoverRoadRunner(DiscoverRunner):
         )
     DEFAULT_TAG_HASH = 'default'
 
-    def __init__(self, concurrency, *args, **kwargs):
+    def __init__(self, *args, **options):
+        concurrency = options.get('concurrency', 0)
         if concurrency is None or int(concurrency) < 0:
             concurrency = cpu_count()
         self.concurrency = int(concurrency)
         self.stream = sys.stderr
         self.original_stream = self.stream
-        self.ramdb = kwargs['ramdb']
+        try:
+            self.ramdb = settings.TEST_RUNNER_RAMDB
+        except AttributeError:
+            self.ramdb = options.get('ramdb', '')
         try:
             save = settings.LOCAL_CACHE
         except AttributeError:
             save = 'local_cache'
         self.ramdb_saves = os.path.join(os.getcwd(), save)
-        super(DiscoverRoadRunner, self).__init__(*args, **kwargs)
+        super(DiscoverRoadRunner, self).__init__(*args, **options)
 
     @staticmethod
     def get_apps_after_exclusions():

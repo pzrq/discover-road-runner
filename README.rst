@@ -55,6 +55,13 @@ Place in your `settings.py` file like every other Django setting.
             'django.contrib.auth',
         )
 
+*   `TEST_RUNNER_RAMDB` - setting to work around PyCharm's test runner
+    not allowing options like
+    `--nomigrations <https://pypi.python.org/pypi/django-test-without-migrations/>`_
+    or `--ramdb`::
+
+        TEST_RUNNER_RAMDB = 'r123'
+
 
 Support
 -------
@@ -83,7 +90,6 @@ Known issues
 * Incorrectly reporting OVERALL (run=0, ...) if running a single app.
 * Does not tally expected failures / unexpected successes (yet!)
 * Doesn't work nicely with coverage
-* Doesn't work nicely with PyCharm's unit test runner
 * Doesn't support fuzzy matching like tox does
 * Probably won't work with TransactionTestCase
 * `./manage.py test typo` shouldn't print in nice green...
