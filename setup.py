@@ -10,7 +10,7 @@ install_requires = [
 
 setup(
     name='discover road runner',
-    version='0.1',
+    version='0.2',
     url='https://github.com/pzrq/discover-road-runner',
     author='Peter Schmidt',
     author_email='peter@peterjs.com',
@@ -26,7 +26,7 @@ setup(
     extras_require={},
     zip_safe=False,
     classifiers=[
-        'Development Status :: 3 - Alpha',
+        'Development Status :: 4 - Beta',
         # 'Environment :: Web Environment',
         # 'Framework :: Django',
         'Intended Audience :: Developers',
