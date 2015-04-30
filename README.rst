@@ -90,7 +90,6 @@ Known issues
 * Doesn't work nicely with coverage
 * Doesn't support fuzzy matching like tox does
 * Probably won't work with TransactionTestCase
-* `./manage.py test typo` shouldn't print in nice green...
 * If run for a single test_label, MARS should print the just the individual failing tests
 * Ironically DRR has no meta test suite to test the test suite is doing what
   it is supposed to be doing...
