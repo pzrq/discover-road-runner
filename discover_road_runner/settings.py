@@ -69,13 +69,13 @@ WSGI_APPLICATION = 'NOTUSED.wsgi.application'
 DATABASES = {
     'acme': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': os.path.join(BASE_DIR, 'db_acme.sqlite3'),
+        'NAME': ':memory:',
         # TODO: Not need to turn this off...
         'TEST': {'SERIALIZE': False},
     },
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': os.path.join(BASE_DIR, 'db_default.sqlite3'),
+        'NAME': ':memory:',
         # TODO: Not need to turn this off...
         'TEST': {'SERIALIZE': False},
     },
