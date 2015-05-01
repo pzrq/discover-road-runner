@@ -86,6 +86,7 @@ TODO
 Known issues
 ------------
 
+* Hangs (under Django 1.8?) when running the first time, fine when running with --ramdb
 * Only supports the SQLite3 `:memory:` backend.
 * Doesn't work nicely with coverage
 * Doesn't support fuzzy matching like tox does
