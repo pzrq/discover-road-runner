@@ -87,6 +87,11 @@ Known issues
 ------------
 
 * Hangs (under Django 1.8?) when running the first time, fine when running with --ramdb
+https://github.com/pzrq/discover-road-runner/blob/0acb3eece9b2a6790c11415ed0a085795500f616/discover_road_runner/runners.py#L285-290
+Cross referenced with:
+https://docs.python.org/2/library/multiprocessing.html#all-platforms
+Suggests the old version should deadlock, but it didn't deadlock for me which is bizarre considering the new Pool-based version is probably deadlocking.
+
 * Only supports the SQLite3 `:memory:` backend.
 * Doesn't work nicely with coverage
 * Doesn't support fuzzy matching like tox does
