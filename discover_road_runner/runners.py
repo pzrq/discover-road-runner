@@ -282,12 +282,12 @@ class DiscoverRoadRunner(DiscoverRunner):
             # Concurrency == 0 - run in same process
             multi_proc_run_tests(*process_args)
 
+        results = []
+        while len(results) < len(test_labels) + extra:
+            results.append(result_queue.get())
+
         for p in processes:
             p.join()
-
-        results = []
-        while not result_queue.empty():
-            results.append(result_queue.get())
 
         mars = [
             r['test_label']
