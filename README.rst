@@ -86,6 +86,13 @@ TODO
 Known issues
 ------------
 
+* Child processes usually fail to report 3/70 apps completing...
+    ... requires NOT using --ramdb which is annoying as migrations take forever
+        i.e. works with --ramdb
+    ... running those 3 apps combined usually fails
+        (or at least have not seen it succeed without a hang),
+        but often in a different fail order
+
 * Only supports the SQLite3 `:memory:` backend.
 * Doesn't work nicely with coverage
 * Doesn't support fuzzy matching like tox does

@@ -147,6 +147,7 @@ class DiscoverRoadRunner(DiscoverRunner):
 
         # Need to pass the stream in to silence the output,
         # then use the result to print relevant output fast
+        print(os.getpid(), 'before hijack run clone sqlite db', kwargs['test_label'])
         return HijackMoreOutputTestRunner(
             stream=self.stream,
             verbosity=self.verbosity,
@@ -221,9 +222,10 @@ class DiscoverRoadRunner(DiscoverRunner):
         processes = []
         source_queue = Queue(maxsize=len(test_labels) + extra)
 
-        for label in test_labels:
+        for i, label in enumerate(test_labels):
             suite = self.build_suite([label])
-            source_queue.put((label, suite))
+            source_queue.put((i, label, suite))
+            print(os.getpid(), 'Put:', i, label)
         if extra_tests:
             source_queue.put(
                 ('extra_tests', self.build_suite(None, extra_tests))
@@ -284,6 +286,7 @@ class DiscoverRoadRunner(DiscoverRunner):
 
         results = []
         while len(results) < len(test_labels) + extra:
+            print(os.getpid(), 'len(results)', len(results), 'expect', len(test_labels) + extra)
             results.append(result_queue.get())
 
         for p in processes:
@@ -406,7 +409,8 @@ def multi_proc_run_tests(pickled_self, source_queue, result_queue, queries):
     # Get any test apps / labels in the source_queue until it is empty
     while True:
         try:
-            test_label, suite = source_queue.get(block=False)
+            i, test_label, suite = source_queue.get(block=False)
+            print(os.getpid(), 'Child got:', i, test_label)
         except queue.Empty:
             return
 
@@ -419,7 +423,9 @@ def multi_proc_run_tests(pickled_self, source_queue, result_queue, queries):
         create_cloned_sqlite_db(queries)
 
         stream = getattr(pickled_self, 'stream', sys.stderr)
-        result = pickled_self.run_suite(suite, stream=stream)
+        print(os.getpid(), 'before run suite', test_label)
+        result = pickled_self.run_suite(suite, test_label=test_label, stream=stream)
+        print(os.getpid(), 'after run suite', test_label)
 
         # Build the final message
         extra_msg_dict = extra_msg_dict_from(test_label, result)
@@ -434,6 +440,7 @@ def multi_proc_run_tests(pickled_self, source_queue, result_queue, queries):
         print(full_msg)
 
         result_queue.put(extra_msg_dict)
+        print(os.getpid(), 'Child put: ', i, test_label)
 
 
 def create_cloned_sqlite_db(queries):
