@@ -1,16 +1,10 @@
 import os
 import subprocess
 import sys
-
-# queue.Empty seems to have moved
-if sys.version_info[0] >= 3:
-    import queue
-else:
-    from multiprocessing import queues as queue
-
 import time
 import unittest
-from multiprocessing import Process, Queue
+
+from multiprocessing import Pool
 from optparse import make_option
 
 from billiard import cpu_count
@@ -216,19 +210,6 @@ class DiscoverRoadRunner(DiscoverRunner):
 
         self.setup_test_environment()
 
-        # Prepare (often many) test suites to be run across multiple processes
-        # suite = self.build_suite(test_labels, extra_tests)
-        processes = []
-        source_queue = Queue(maxsize=len(test_labels) + extra)
-
-        for label in test_labels:
-            suite = self.build_suite([label])
-            source_queue.put((label, suite))
-        if extra_tests:
-            source_queue.put(
-                ('extra_tests', self.build_suite(None, extra_tests))
-            )
-
         if self.ramdb and self.db_files_exist():
             # Have run before, reuse the RAM DB.
             in_files = self.db_file_paths()
@@ -272,22 +253,25 @@ class DiscoverRoadRunner(DiscoverRunner):
             )
             print(msg)
 
-        result_queue = Queue(maxsize=len(test_labels) + extra)
-        process_args = (self, source_queue, result_queue, queries)
-        for _ in range(min(self.concurrency, len(test_labels) + extra)):
-            p = Process(target=multi_proc_run_tests, args=process_args)
-            p.start()
-            processes.append(p)
+        # Prepare (often many) test suites to be run across multiple processes
+        # suite = self.build_suite(test_labels, extra_tests)
+        source_queue = []
+
+        for label in test_labels:
+            suite = self.build_suite([label])
+            source_queue.append((self, queries, label, suite))
+        if extra_tests:
+            suite = self.build_suite(None, extra_tests)
+            source_queue.append((self, queries, 'extra_tests', suite))
+
+        if self.concurrency > 0:
+            pool = Pool(min(self.concurrency, len(test_labels) + extra))
+            results = pool.map(multi_proc_run_tests, source_queue)
         else:
             # Concurrency == 0 - run in same process
-            multi_proc_run_tests(*process_args)
-
-        for p in processes:
-            p.join()
-
-        results = []
-        for _ in range(len(test_labels) + extra):
-            results.append(result_queue.get())
+            results = []
+            for args in source_queue:
+                results.append(multi_proc_run_tests(args))
 
         mars = [
             r['test_label']
@@ -396,44 +380,38 @@ def build_message(extra_msg_dict):
     return msg
 
 
-def multi_proc_run_tests(pickled_self, source_queue, result_queue, queries):
+def multi_proc_run_tests(args):
     """
     This is a version of `DiscoverRunner.run_tests` that is written to be
     run as a single thread, but run in parallel with other test processes.
-    It has also been augmented to provide informative breakdowns for each of
-    the test_label(s) placed into the source_queue.
+    It has also been augmented to provide informative breakdowns for
+    the test_label being run.
     """
-    # Get any test apps / labels in the source_queue until it is empty
-    while True:
-        try:
-            test_label, suite = source_queue.get(block=False)
-        except queue.Empty:
-            return
+    pickled_self, queries, test_label, suite = args
+    # Set up and run the suite, capturing most of the stream output
+    # Printing here can't be made atomic cleanly at verbosity >= 2,
+    # i.e. without hacks I don't want to do and it's off the default flows
+    start = time.time()
 
-        # Set up and run the suite, capturing most of the stream output
-        # Printing here can't be made atomic cleanly at verbosity >= 2,
-        # i.e. without hacks I don't want to do and it's off the default flows
-        start = time.time()
+    # Can't safely setup_databases until after suites have been built
+    create_cloned_sqlite_db(queries)
 
-        # Can't safely setup_databases until after suites have been built
-        create_cloned_sqlite_db(queries)
+    stream = getattr(pickled_self, 'stream', sys.stderr)
+    result = pickled_self.run_suite(suite, stream=stream)
 
-        stream = getattr(pickled_self, 'stream', sys.stderr)
-        result = pickled_self.run_suite(suite, stream=stream)
+    # Build the final message
+    extra_msg_dict = extra_msg_dict_from(test_label, result)
+    end = time.time()
+    extra_msg_dict['took'] = end - start
+    msg = build_message(extra_msg_dict)
+    msg_coloured = colored(msg, color=get_colour(extra_msg_dict))
+    full_msg = msg_coloured
 
-        # Build the final message
-        extra_msg_dict = extra_msg_dict_from(test_label, result)
-        end = time.time()
-        extra_msg_dict['took'] = end - start
-        msg = build_message(extra_msg_dict)
-        msg_coloured = colored(msg, color=get_colour(extra_msg_dict))
-        full_msg = msg_coloured
+    # Only one print statement so it is atomic
+    # i.e. no annoying interleaving of test output should be possible
+    print(full_msg)
 
-        # Only one print statement so it is atomic
-        # i.e. no annoying interleaving of test output should be possible
-        print(full_msg)
-
-        result_queue.put(extra_msg_dict)
+    return extra_msg_dict
 
 
 def create_cloned_sqlite_db(queries):
