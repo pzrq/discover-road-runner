@@ -92,6 +92,7 @@ Cross referenced with:
 https://docs.python.org/2/library/multiprocessing.html#all-platforms
 Suggests the old version should deadlock, but it didn't deadlock for me which is bizarre considering the new Pool-based version is probably deadlocking.
 Pool based implementation also is ~20% slower due to distributing uneven test workloads across different processes poorly.
+Billiard (as a fork of Python's multiprocessing) doesn't fix this speed issue so more support for going back to source and results queues and working with them.
 
 * Only supports the SQLite3 `:memory:` backend.
 * Doesn't work nicely with coverage
