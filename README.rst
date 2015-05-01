@@ -86,6 +86,8 @@ TODO
 Known issues
 ------------
 
+* Blocking on results_queue.get() doesn't always work either, so time to revisit: 
+  https://docs.python.org/2/library/multiprocessing.html#introduction
 * Only supports the SQLite3 `:memory:` backend.
 * Doesn't work nicely with coverage
 * Doesn't support fuzzy matching like tox does
