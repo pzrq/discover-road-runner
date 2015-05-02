@@ -286,8 +286,20 @@ class DiscoverRoadRunner(DiscoverRunner):
             p.join()
 
         results = []
+        retrieved_labels = []
         while not result_queue.empty():
-            results.append(result_queue.get())
+            retrieved_label, result = result_queue.get()
+            results.append(result)
+            retrieved_labels.append(retrieved_label)
+        not_covered = set(test_labels) - set(retrieved_labels)
+        if not_covered:
+            msg = (
+                'Tests that did not return results under --concurrency={} '
+                '(try running separately, or with --concurrency=0): {}'.format(
+                    self.concurrency,
+                    ', '.join(not_covered),
+                ))
+            print(msg)
 
         mars = [
             r['test_label']
@@ -433,7 +445,7 @@ def multi_proc_run_tests(pickled_self, source_queue, result_queue, queries):
         # i.e. no annoying interleaving of test output should be possible
         print(full_msg)
 
-        result_queue.put(extra_msg_dict)
+        result_queue.put((test_label, extra_msg_dict))
 
 
 def create_cloned_sqlite_db(queries):
