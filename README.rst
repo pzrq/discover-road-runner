@@ -86,13 +86,31 @@ TODO
 Known issues
 ------------
 
-* Sometimes fails to report results (3/70 apps on a specific large project), 
+* Ironically DRR has no meta test suite to test the test suite is doing what
+  it is supposed to be doing... hence no TravisCI, etc.
+* If I get this far, should compare meta results against
+  django.test.runner.py: DiscoverRunner for correctness.
+* Sometimes fails to report results (3/70 apps on a specific large project),
   however it does report that it did not report results.
-* Inspect test suite to be run to determine if we can skip even setting up the databases saving another ~100ms?
+* Sometimes get "IOError: [Errno 32] Broken pipe"
+  - not sure if its related to the OSX Python 2.7.6 with SQLite 3.8.5 crash
+  or something different (that was fixed in SQLite 3.8.6_1).
+  There's a Django issue for it somewhere...
+* Inspect test suite to be run to determine if we can skip even setting up
+  the databases saving another ~100ms?
 * Only supports the SQLite3 `:memory:` backend.
+  Should test against others or be clearer.
 * Doesn't work nicely with coverage (requires running with `--concurrency=0`)
 * Doesn't support fuzzy matching like tox does
 * Probably won't work with TransactionTestCase
-* If run for a single test_label, MARS should print the just the individual failing tests
-* Ironically DRR has no meta test suite to test the test suite is doing what
-  it is supposed to be doing...
+  (refer to bunch of hacks to save slow migrations, i.e. --ramdb)?
+* If run for a single test_label, MARS should print the just the individual
+  failing tests
+* Remember and print slowest individual tests like the one I added to SymPy
+  Original thought "Print 3 slowest tests and % of overall time taken."
+* Investigate if it is worthwhile trade off to introspect an app for
+  no or only SimpleTestCase(s) before setting up and tearing down the test DB.
+  Could save like 100ms per affected app.
+  https://docs.djangoproject.com/en/1.4/topics/testing/#django.test.SimpleTestCase
+* --rerun=10 or --batch=10  # Run test labels 10x, need to think about name
+* with self.subTest() in Python 3+?
