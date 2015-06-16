@@ -90,7 +90,7 @@ Known issues
   however it does report that it did not report results.
 * Inspect test suite to be run to determine if we can skip even setting up the databases saving another ~100ms?
 * Only supports the SQLite3 `:memory:` backend.
-* Doesn't work nicely with coverage
+* Doesn't work nicely with coverage (requires running with `--concurrency=0`)
 * Doesn't support fuzzy matching like tox does
 * Probably won't work with TransactionTestCase
 * If run for a single test_label, MARS should print the just the individual failing tests
