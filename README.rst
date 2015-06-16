@@ -88,7 +88,6 @@ Known issues
 
 * Sometimes fails to report results (3/70 apps on a specific large project), 
   however it does report that it did not report results.
-* Tests that did not return results should print without commas for more speed.
 * Inspect test suite to be run to determine if we can skip even setting up the databases saving another ~100ms?
 * Only supports the SQLite3 `:memory:` backend.
 * Doesn't work nicely with coverage

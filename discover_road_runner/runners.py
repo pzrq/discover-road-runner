@@ -297,7 +297,7 @@ class DiscoverRoadRunner(DiscoverRunner):
                 'Tests that did not return results under --concurrency={} '
                 '(try running separately, or with --concurrency=0): {}'.format(
                     self.concurrency,
-                    ', '.join(sorted(not_covered)),
+                    ' '.join(sorted(not_covered)),
                 ))
             print(msg)
 
