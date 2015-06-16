@@ -102,6 +102,8 @@ class DiscoverRoadRunner(DiscoverRunner):
                 fast_repro = '.'.join((
                     test.__module__,
                     test.__class__.__name__,
+                    # TODO: This sometimes fails / is not present, need to
+                    # TODO: ... remember to investigate when it next happens.
                     test._testMethodName,
                 ))
                 return colored(fast_repro, 'red')
